@@ -54,6 +54,8 @@ def main():
             set_timer(args[1], args[2])
         case "reset":
             reset()
+        case "new":
+            new()
         case "remove":
             remove()
         case "help":
@@ -238,6 +240,13 @@ def reset():
     check()
 
 
+def new():
+    timer = Timer()
+    save(timer)
+    print("New timer initialized.")
+    check()
+
+
 def remove():
     if not os.path.exists(TMP_FILE_PATH):
         print("Timer does not exist.")
@@ -276,6 +285,7 @@ def print_help():
                 total
                 paused
         reset               Stops and sets running and total timers to zero.
+        new                 Creates a new timer. Alias for "reset".
         remove              Deletes the timer and related file.
         help                Prints this help message.
         debug               Prints debug info.
