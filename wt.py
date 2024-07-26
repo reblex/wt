@@ -207,12 +207,22 @@ def set_timer(type: str, time: str):
 
             timer.completed_minutes = hour_minute_to_minutes(hour, minute)
         case "paused":
-            if timer.status != Status.Paused:
-                print("Can only set paused time when timer is paused.")
+            if timer.status not in [Status.Running, Status.Paused, Status.Stopped]:
+                print(f"Current status {timer.status} not handled.")
                 return
 
             timer.paused_minutes = hour_minute_to_minutes(hour, minute)
-        case _:  # TODO: PRRO 3. Add case for Running. Should work, just have to set the "paused/current" minutes and also set the startTime to NOW
+
+            if timer.status == Status.Running:
+                timer.paused_minutes += delta_minutes(dt.strptime(
+                    timer.start_datetime_str, DT_FORMAT), dt.now())
+                now = dt.now().strftime(DT_FORMAT)
+                timer.start_datetime_str = now
+
+            elif timer.status == Status.Stopped:
+                timer.status = Status.Paused
+
+        case _:
             print(f"Unhandled type: {type}.")
             return
 
