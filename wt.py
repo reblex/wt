@@ -7,6 +7,7 @@ from enum import StrEnum
 import sys
 import os
 
+# TODO: Maybe store tmp file elsewhere to not lose on potential mid-day system reboot? /Users/Shared?? Nice if platform agnostic. Could also auto determine based on platform.
 TMP_FILE_PATH = "/tmp/wt"
 DT_FORMAT = "%Y-%m-%d %H-%M-%S"
 
@@ -24,7 +25,6 @@ class Mode(StrEnum):
 
 
 class Timer():
-    # TODO: "mode" cmd to set silent or normal/verbose to print or not print check() after each command.
     def __init__(self, status=Status.Stopped, start="", pausedTime=0, totalTime=0, mode=Mode.Silent):
         self.status: Status = status
         self.start_datetime_str: str = start
@@ -62,15 +62,19 @@ def main():
             new()
         case "remove":
             remove()
+        case "mode":
+            if len(args) < 2:
+                timer = load()
+                print(timer.mode)
+                return
+            mode_select(args[1])
         case "help":
             print_help()
         case "debug":
             debug()
         case _:
-            print("Invalid command.\n")
+            print("Invalid command.")
 
-
-# TODO: PRIO 4. Maybe store tmp file elsewhere to not lose on potential mid-day system reboot? /Users/Shared?? Nice if platform agnostic. Could also auto determine based on platform.
 
 def start():
     timer = Timer()
@@ -96,10 +100,6 @@ def start():
 
 
 def stop():
-    if not os.path.exists(TMP_FILE_PATH):
-        print("No timer exists.")
-        return
-
     timer = load()
     match timer.status:
         case Status.Stopped:
@@ -121,9 +121,6 @@ def stop():
 
 
 def pause():
-    if not os.path.exists(TMP_FILE_PATH):
-        print("No timer exists.")
-
     timer = load()
     match timer.status:
         case Status.Paused:
@@ -143,10 +140,6 @@ def pause():
 
 
 def check():
-    if not os.path.exists(TMP_FILE_PATH):
-        print("No timer exists.")
-        return
-
     timer = load()
 
     running_minutes = 0
@@ -178,9 +171,7 @@ def check():
 
 
 def set_timer(type: str, time: str):
-    if not os.path.exists(TMP_FILE_PATH):
-        print("No timer exists.")
-        return
+    timer = load()
 
     if type not in ["total", "current"]:
         print("Incorrect timer type. Should be 'total' or 'current'.")
@@ -189,8 +180,6 @@ def set_timer(type: str, time: str):
     if len(time) < 1 or len(time) > 4 or not time.isdigit():
         print("Incorrect time format. Should be 1-4 digit HHMM.")
         return
-
-    timer = load()
 
     hour = 0
     minute = 0
@@ -236,27 +225,40 @@ def set_timer(type: str, time: str):
     print_check_if_verbose(timer)
 
 
-def reset():
+def reset(msg: str = "Timer reset."):
+    old_mode = None
+    if os.path.exists(TMP_FILE_PATH):
+        old_timer = load()
+        old_mode = old_timer.mode
+
     timer = Timer()
+    if old_mode:
+        timer.mode = old_mode
+
     save(timer)
-    print_message_if_not_silent(timer, "Timer reset.")
+    print_message_if_not_silent(timer, msg)
     print_check_if_verbose(timer)
 
 
 def new():
-    timer = Timer()
-    save(timer)
-    print_message_if_not_silent(timer, "New timer initialized.")
-    print_check_if_verbose(timer)
+    reset("New timer initialized.")
 
 
 def remove():
-    if not os.path.exists(TMP_FILE_PATH):
-        print("Timer does not exist.")
-        return
     timer = load()
     os.remove(TMP_FILE_PATH)
     print_message_if_not_silent(timer, "Timer removed.")
+
+
+def mode_select(mode: Mode):
+    if mode not in [Mode.Silent, Mode.Normal, Mode.Verbose]:
+        print(f"Unhandled mode: {mode}")
+        return
+
+    timer = load()
+    timer.mode = mode
+    save(timer)
+    print_message_if_not_silent(timer, f"Timer mode set to {timer.mode}")
 
 
 def debug():
@@ -287,9 +289,16 @@ def print_help():
             types:
                 total
                 current
+
         reset               Stops and sets current and total timers to zero.
         new                 Creates a new timer. Alias for "reset".
         remove              Deletes the timer and related file.
+        mode <type>         Change output verbosity.
+            types:
+                silent      Only prints errors (Default)
+                normal      Prints message after performed action.
+                verbose     Normal + runs "check" command after other commands.
+
         help                Prints this help message.
         debug               Prints debug info.
 """)
@@ -322,27 +331,28 @@ def hour_minute_to_minutes(hours: int, minutes: int) -> int:
 
 
 def save(timer: Timer):
-    # CSV Format = status,startTime,pausedMinutes,totalMinutes
+    # CSV Format = status,startTime,pausedMinutes,totalMinutes,mode
     with open(TMP_FILE_PATH, 'w') as file:
         file.write(f"{timer.status},{timer.start_datetime_str},{
-                   timer.paused_minutes},{timer.completed_minutes}")
+                   timer.paused_minutes},{timer.completed_minutes},{timer.mode}")
 
 
 def load(debug: bool = False) -> Timer:
-    # CSV Format = status,startTime,pausedMinutes,totalMinutes
+    if not os.path.exists(TMP_FILE_PATH):
+        print("No timer exists.")
+        quit()
+
+    # CSV Format = status,startTime,pausedMinutes,totalMinutes,mode
     line = ""
-    try:
-        with open(TMP_FILE_PATH, 'r') as file:
-            line = file.readline().strip('\n')
-    except:
-        print("No file.")
+    with open(TMP_FILE_PATH, 'r') as file:
+        line = file.readline().strip('\n')
 
     if debug:
         print(f'CSV = "{line}"')
 
     csv = line.split(",")
 
-    return Timer(Status(csv[0]), csv[1], int(csv[2]), int(csv[3]))
+    return Timer(Status(csv[0]), csv[1], int(csv[2]), int(csv[3]), csv[4])
 
 
 def print_message_if_not_silent(timer: Timer, message: str):
