@@ -1,5 +1,3 @@
-#!/opt/homebrew/bin/python3
-
 ##
 # Work Time (like "time to work" and actually "timing" work :D)
 ##
@@ -19,15 +17,23 @@ class Status(StrEnum):
     Running = "running"
 
 
+class Mode(StrEnum):
+    Silent = "silent"
+    Normal = "normal"
+    Verbose = "verbose"
+
+
 class Timer():
-    def __init__(self, status=Status.Stopped, start="", pausedTime=0, totalTime=0):
+    # TODO: "mode" cmd to set silent or normal/verbose to print or not print check() after each command.
+    def __init__(self, status=Status.Stopped, start="", pausedTime=0, totalTime=0, mode=Mode.Silent):
         self.status: Status = status
         self.start_datetime_str: str = start
         self.paused_minutes: int = pausedTime
         self.completed_minutes: int = totalTime
+        self.mode: Mode = mode
 
     def __str__(self):
-        return f"status = {self.status}\nstart_datetime = {self.start_datetime_str}\npaused_minutes = {self.paused_minutes}\ncompleted_minutes = {self.completed_minutes}"
+        return f"status = {self.status}\nstart_datetime = {self.start_datetime_str}\npaused_minutes = {self.paused_minutes}\ncompleted_minutes = {self.completed_minutes}\nmode = {self.mode}"
 
 
 def main():
@@ -47,8 +53,7 @@ def main():
             check()
         case "set":
             if len(args) < 3:
-                print("Incorrect amount of arguments.\n")
-                print_help()
+                print("Incorrect amount of arguments.")
                 return
             set_timer(args[1], args[2])
         case "reset":
@@ -63,7 +68,6 @@ def main():
             debug()
         case _:
             print("Invalid command.\n")
-            print_help()
 
 
 # TODO: PRIO 4. Maybe store tmp file elsewhere to not lose on potential mid-day system reboot? /Users/Shared?? Nice if platform agnostic. Could also auto determine based on platform.
@@ -87,8 +91,8 @@ def start():
     timer.start_datetime_str = now
     timer.status = Status.Running
     save(timer)
-    print(message)
-    check()
+    print_message_if_not_silent(timer, message)
+    print_check_if_verbose(timer)
 
 
 def stop():
@@ -110,8 +114,8 @@ def stop():
             timer.paused_minutes = 0
             timer.status = Status.Stopped
             save(timer)
-            print("Timer stopped.")
-            check()
+            print_message_if_not_silent(timer, "Timer stopped.")
+            print_check_if_verbose(timer)
         case _:
             print(f"Unhandled status: {timer.status}")
 
@@ -132,8 +136,8 @@ def pause():
             timer.start_datetime_str = ""
             timer.status = Status.Paused
             save(timer)
-            print(f"Timer paused.")
-            check()
+            print_message_if_not_silent(timer, "Timer paused.")
+            print_check_if_verbose(timer)
         case _:
             print(f"Unhandled status: {timer.status}")
 
@@ -228,31 +232,31 @@ def set_timer(type: str, time: str):
             return
 
     save(timer)
-    print("Timer set.")
-    check()
+    print_message_if_not_silent(timer, "Timer set.")
+    print_check_if_verbose(timer)
 
 
 def reset():
     timer = Timer()
     save(timer)
-    print("Timer reset.")
-    check()
+    print_message_if_not_silent(timer, "Timer reset.")
+    print_check_if_verbose(timer)
 
 
 def new():
     timer = Timer()
     save(timer)
-    print("New timer initialized.")
-    check()
+    print_message_if_not_silent(timer, "New timer initialized.")
+    print_check_if_verbose(timer)
 
 
 def remove():
     if not os.path.exists(TMP_FILE_PATH):
         print("Timer does not exist.")
         return
-
+    timer = load()
     os.remove(TMP_FILE_PATH)
-    print("Timer removed.")
+    print_message_if_not_silent(timer, "Timer removed.")
 
 
 def debug():
@@ -339,6 +343,16 @@ def load(debug: bool = False) -> Timer:
     csv = line.split(",")
 
     return Timer(Status(csv[0]), csv[1], int(csv[2]), int(csv[3]))
+
+
+def print_message_if_not_silent(timer: Timer, message: str):
+    if timer.mode != Mode.Silent:
+        print(message)
+
+
+def print_check_if_verbose(timer: Timer):
+    if timer.mode == Mode.Verbose:
+        check()
 
 
 if __name__ == "__main__":
