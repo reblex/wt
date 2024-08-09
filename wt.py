@@ -23,7 +23,6 @@ class Timer():
     def __init__(self, status=Status.Stopped, start="", pausedTime=0, totalTime=0):
         self.status: Status = status
         self.start_datetime_str: str = start
-        # TODO: Prio 2. Rename paused_minutes to current_minutes. Status.paused should remain, but even if paused it's still "current" cycle/timer.
         self.paused_minutes: int = pausedTime
         self.completed_minutes: int = totalTime
 
@@ -179,8 +178,8 @@ def set_timer(type: str, time: str):
         print("No timer exists.")
         return
 
-    if type not in ["total", "paused"]:
-        print("Incorrect timer type. Should be 'total' or 'paused'.")
+    if type not in ["total", "current"]:
+        print("Incorrect timer type. Should be 'total' or 'current'.")
         return
 
     if len(time) < 1 or len(time) > 4 or not time.isdigit():
@@ -208,7 +207,7 @@ def set_timer(type: str, time: str):
                 return
 
             timer.completed_minutes = hour_minute_to_minutes(hour, minute)
-        case "paused":
+        case "current":
             if timer.status not in [Status.Running, Status.Paused, Status.Stopped]:
                 print(f"Current status {timer.status} not handled.")
                 return
@@ -275,16 +274,16 @@ def print_help():
     Commands:
         start               Starts a new timer or continues paused timer.
         pause               Pauses currently running timer.
-        stop                Stops running or paused timer, resetting paused
-                            time and setting total time.
-        check               Prints running and total time along with status.
+        stop                Stops running or paused timer, sets total time,
+                            and resets current time.
+        check               Prints current and total time along with status.
                             Running wt without any command does the same.
-        set <type> <time>   Manually set total/paused time using 1-4 digit
+        set <type> <time>   Manually set total/current time using 1-4 digit
                             HHMM, HMM, MM, or M. Ex. wt set total 15 = 15min.
             types:
                 total
-                paused
-        reset               Stops and sets running and total timers to zero.
+                current
+        reset               Stops and sets current and total timers to zero.
         new                 Creates a new timer. Alias for "reset".
         remove              Deletes the timer and related file.
         help                Prints this help message.
