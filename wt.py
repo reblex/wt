@@ -208,8 +208,6 @@ def set_timer(type: str, time: str):
             timer.paused_minutes = hour_minute_to_minutes(hour, minute)
 
             if timer.status == Status.Running:
-                timer.paused_minutes += delta_minutes(dt.strptime(
-                    timer.start_datetime_str, DT_FORMAT), dt.now())
                 now = dt.now().strftime(DT_FORMAT)
                 timer.start_datetime_str = now
 
