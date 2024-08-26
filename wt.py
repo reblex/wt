@@ -173,7 +173,7 @@ def check():
 def set_timer(type: str, time: str):
     timer = load()
 
-    if type not in ["total", "current"]:
+    if type not in ["total", "current", "t", "c"]:
         print("Incorrect timer type. Should be 'total' or 'current'.")
         return
 
@@ -194,13 +194,13 @@ def set_timer(type: str, time: str):
             minute = int(time)
 
     match type:
-        case "total":
+        case "total" | "t":
             if timer.status != Status.Stopped:
                 print("Can only set total time when timer is stopped.")
                 return
 
             timer.completed_minutes = hour_minute_to_minutes(hour, minute)
-        case "current":
+        case "current" | "c":
             if timer.status not in [Status.Running, Status.Paused, Status.Stopped]:
                 print(f"Current status {timer.status} not handled.")
                 return
@@ -285,8 +285,8 @@ def print_help():
         set <type> <time>   Manually set total/current time using 1-4 digit
                             HHMM, HMM, MM, or M. Ex. wt set total 15 = 15min.
             types:
-                total
-                current
+                total / t
+                current / c
 
         reset               Stops and sets current and total timers to zero.
         new                 Creates a new timer. Alias for "reset".
