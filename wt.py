@@ -313,7 +313,7 @@ def delta_minutes(start: dt, now: dt) -> int:
     delta = now - start
 
     seconds = delta.total_seconds()
-    minutes = int((seconds % 3600) // 60)
+    minutes = int(seconds // 60)
 
     return minutes
 
