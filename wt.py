@@ -62,6 +62,8 @@ def main():
             new()
         case "remove":
             remove()
+        case "status":
+            status()
         case "mode":
             if len(args) < 2:
                 timer = load()
@@ -246,6 +248,11 @@ def remove():
     timer = load()
     os.remove(TMP_FILE_PATH)
     print_message_if_not_silent(timer, "Timer removed.")
+
+
+def status():
+    timer = load()
+    print(timer.status)
 
 
 def mode_select(mode: Mode):
