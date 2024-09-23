@@ -251,6 +251,9 @@ def remove():
 
 
 def status():
+    if not os.path.exists(TMP_FILE_PATH):
+        print(Status.Stopped)
+        return
     timer = load()
     print(timer.status)
 
