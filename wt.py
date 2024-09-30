@@ -44,7 +44,8 @@ def main():
 
     match args[0]:
         case "start":
-            start()
+            start_time = None if len(args) < 2 else args[1]
+            start(start_time)
         case "stop":
             stop()
         case "pause":
@@ -78,7 +79,7 @@ def main():
             print("Invalid command.")
 
 
-def start():
+def start(start_time: str = None):
     timer = Timer()
     if os.path.exists(TMP_FILE_PATH):
         timer = load()
@@ -95,10 +96,19 @@ def start():
 
     now = dt.now().strftime(DT_FORMAT)
     timer.start_datetime_str = now
+    prev_status = timer.status
     timer.status = Status.Running
+
     save(timer)
     print_message_if_not_silent(timer, message)
     print_check_if_verbose(timer)
+
+    if start_time != None:
+        if prev_status != Status.Stopped:
+            print("Can only set start time if stopped")
+            return
+        else:
+            set_timer("current", start_time)
 
 
 def stop():
@@ -183,17 +193,7 @@ def set_timer(type: str, time: str):
         print("Incorrect time format. Should be 1-4 digit HHMM.")
         return
 
-    hour = 0
-    minute = 0
-    match len(time):
-        case 4:
-            hour = int(time[:2])
-            minute = int(time[2:])
-        case 3:
-            hour = int(time[:1])
-            minute = int(time[1:])
-        case 2 | 1:
-            minute = int(time)
+    minutes = string_time_to_minutes(time)
 
     match type:
         case "total" | "t":
@@ -201,13 +201,13 @@ def set_timer(type: str, time: str):
                 print("Can only set total time when timer is stopped.")
                 return
 
-            timer.completed_minutes = hour_minute_to_minutes(hour, minute)
+            timer.completed_minutes = minutes
         case "current" | "c":
             if timer.status not in [Status.Running, Status.Paused, Status.Stopped]:
                 print(f"Current status {timer.status} not handled.")
                 return
 
-            timer.paused_minutes = hour_minute_to_minutes(hour, minute)
+            timer.paused_minutes = minutes
 
             if timer.status == Status.Running:
                 now = dt.now().strftime(DT_FORMAT)
@@ -290,7 +290,8 @@ def print_help():
         pause               Pauses currently running timer.
         stop                Stops running or paused timer, sets total time,
                             and resets current time.
-        check               Prints current and total time along with status.
+        check <time>        Prints current and total time along with status.
+                            Optionally add time to set.
                             Running wt without any command does the same.
         set <type> <time>   Manually set total/current time using 1-4 digit
                             HHMM, HMM, MM, or M. Ex. wt set total 15 = 15min.
@@ -361,6 +362,22 @@ def load(debug: bool = False) -> Timer:
     csv = line.split(",")
 
     return Timer(Status(csv[0]), csv[1], int(csv[2]), int(csv[3]), csv[4])
+
+
+def string_time_to_minutes(time: str) -> int:
+    hour = 0
+    minute = 0
+    match len(time):
+        case 4:
+            hour = int(time[:2])
+            minute = int(time[2:])
+        case 3:
+            hour = int(time[:1])
+            minute = int(time[1:])
+        case 2 | 1:
+            minute = int(time)
+
+    return hour_minute_to_minutes(hour, minute)
 
 
 def print_message_if_not_silent(timer: Timer, message: str):
