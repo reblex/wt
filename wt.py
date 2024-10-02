@@ -57,6 +57,16 @@ def main():
                 print("Incorrect amount of arguments.")
                 return
             set_timer(args[1], args[2])
+        case "add":
+            if len(args) < 3:
+                print("Incorrect amount of arguments.")
+                return
+            add(args[1], args[2])
+        case "sub":
+            if len(args) < 3:
+                print("Incorrect amount of arguments.")
+                return
+            sub(args[1], args[2])
         case "reset":
             reset()
         case "new":
@@ -184,15 +194,8 @@ def check():
 
 def set_timer(type: str, time: str):
     timer = load()
-
-    if type not in ["total", "current", "t", "c"]:
-        print("Incorrect timer type. Should be 'total' or 'current'.")
-        return
-
-    if len(time) < 1 or len(time) > 4 or not time.isdigit():
-        print("Incorrect time format. Should be 1-4 digit HHMM.")
-        return
-
+    validate_timer_type_or_quit(type)
+    validate_timestring_or_quit(time)
     minutes = string_time_to_minutes(time)
 
     match type:
@@ -223,6 +226,65 @@ def set_timer(type: str, time: str):
     save(timer)
     print_message_if_not_silent(timer, "Timer set.")
     print_check_if_verbose(timer)
+
+
+def add(type: str, time: str):
+    timer = load()
+    validate_timer_type_or_quit(type)
+    validate_timestring_or_quit(time)
+    minutes = string_time_to_minutes(time)
+
+    match type:
+        case "total" | "t":
+            if timer.status != Status.Stopped:
+                print("Can only update total time when timer is stopped.")
+                return
+
+            timer.completed_minutes += minutes
+        case "current" | "c":
+            timer.paused_minutes = +minutes
+
+            if timer.status == Status.Running:
+                now = dt.now().strftime(DT_FORMAT)
+                timer.start_datetime_str = now
+
+            elif timer.status == Status.Stopped:
+                timer.status = Status.Paused
+
+        case _:
+            print(f"Unhandled type: {type}.")
+            return
+    save(timer)
+
+
+def sub(type: str, time: str):
+    timer = load()
+    validate_timer_type_or_quit(type)
+    validate_timestring_or_quit(time)
+    minutes = string_time_to_minutes(time)
+
+    match type:
+        case "total" | "t":
+            if timer.status != Status.Stopped:
+                print("Can only update total time when timer is stopped.")
+                return
+
+            timer.completed_minutes -= minutes
+        case "current" | "c":
+            timer.paused_minutes = -minutes
+
+            if timer.status == Status.Running:
+                now = dt.now().strftime(DT_FORMAT)
+                timer.start_datetime_str = now
+
+            elif timer.status == Status.Stopped:
+                timer.status = Status.Paused
+
+        case _:
+            print(f"Unhandled type: {type}.")
+            return
+
+    save(timer)
 
 
 def reset(msg: str = "Timer reset."):
@@ -295,6 +357,10 @@ def print_help():
                             Running wt without any command does the same.
         set <type> <time>   Manually set total/current time using 1-4 digit
                             HHMM, HMM, MM, or M. Ex. wt set total 15 = 15min.
+        add <type> <timer>  Add to current or total time. Same types and time
+                            format as Set command.
+        add <type> <timer>  Subtract to current or total time. Same types and
+                            time format as Set command.
             types:
                 total / t
                 current / c
@@ -388,6 +454,18 @@ def print_message_if_not_silent(timer: Timer, message: str):
 def print_check_if_verbose(timer: Timer):
     if timer.mode == Mode.Verbose:
         check()
+
+
+def validate_timer_type_or_quit(type: str):
+    if type not in ["total", "current", "t", "c"]:
+        print("Incorrect timer type. Should be 'total' or 'current'.")
+        quit()
+
+
+def validate_timestring_or_quit(time: str):
+    if len(time) < 1 or len(time) > 4 or not time.isdigit():
+        print("Incorrect time format. Should be 1-4 digit HHMM.")
+        quit()
 
 
 if __name__ == "__main__":
