@@ -6,6 +6,8 @@ from datetime import datetime as dt
 from enum import StrEnum
 import sys
 import os
+import json
+from types import SimpleNamespace
 
 # TODO: Maybe store tmp file elsewhere to not lose on potential mid-day system reboot? /Users/Shared?? Nice if platform agnostic. Could also auto determine based on platform.
 TMP_FILE_PATH = "/tmp/wt"
@@ -24,13 +26,38 @@ class Mode(StrEnum):
     Verbose = "verbose"
 
 
+class OutputFormatSetting(StrEnum):
+    A = "A"
+    B = "B"
+    C = "C"
+
+
+class StatusMessageSetting(StrEnum):
+    Always = "Always"
+    OnError = "OnError"
+    Never = "Never"
+
+
+class PrintTimeSetting(StrEnum):
+    Always = "Always"
+    OnError = "OnError"
+    Never = "Never"
+
+
+class TimerSettings():
+    def __init__(self, outputFormat, statusMessage, printTime):
+        self.output_format: OutputFormatSetting = outputFormat
+        self.status_message: StatusMessageSetting = statusMessage
+        self.print_time: PrintTimeSetting = printTime
+
+
 class Timer():
-    def __init__(self, status=Status.Stopped, start="", pausedTime=0, totalTime=0, mode=Mode.Silent):
+    def __init__(self, status=Status.Stopped, start="", pausedTime=0, completedMinutes=0, timerSettings: TimerSettings = {}):
         self.status: Status = status
         self.start_datetime_str: str = start
         self.paused_minutes: int = pausedTime
-        self.completed_minutes: int = totalTime
-        self.mode: Mode = mode
+        self.completed_minutes: int = completedMinutes
+        self.settings: TimerSettings = timerSettings
 
     def __str__(self):
         return f"status = {self.status}\nstart_datetime = {self.start_datetime_str}\npaused_minutes = {self.paused_minutes}\ncompleted_minutes = {self.completed_minutes}\nmode = {self.mode}"
@@ -272,7 +299,7 @@ def mode_select(mode: Mode):
 def debug():
     print(f"TMP_FILE_PATH = {TMP_FILE_PATH}\nDT_FORMAT = {DT_FORMAT}")
     if os.path.exists(TMP_FILE_PATH):
-        timer = load(debug=True)
+        timer = load()
         print(timer)
     else:
         print(f"No file at {TMP_FILE_PATH}")
@@ -340,28 +367,19 @@ def hour_minute_to_minutes(hours: int, minutes: int) -> int:
 
 
 def save(timer: Timer):
-    # CSV Format = status,startTime,pausedMinutes,totalMinutes,mode
     with open(TMP_FILE_PATH, 'w') as file:
-        file.write(f"{timer.status},{timer.start_datetime_str},{
-                   timer.paused_minutes},{timer.completed_minutes},{timer.mode}")
+        file.write(json.dumps(timer.__dict__, indent=4,
+                   sort_keys=True, default=str))
 
 
-def load(debug: bool = False) -> Timer:
+def load() -> Timer:
     if not os.path.exists(TMP_FILE_PATH):
         print("No timer exists.")
         quit()
 
-    # CSV Format = status,startTime,pausedMinutes,totalMinutes,mode
-    line = ""
     with open(TMP_FILE_PATH, 'r') as file:
-        line = file.readline().strip('\n')
-
-    if debug:
-        print(f'CSV = "{line}"')
-
-    csv = line.split(",")
-
-    return Timer(Status(csv[0]), csv[1], int(csv[2]), int(csv[3]), csv[4])
+        d = json.load(file)
+        return Timer(Status(d["status"]), d["start_datetime_str"], d["paused_minutes"], d["completed_minutes"], d["mode"])
 
 
 def string_time_to_minutes(time: str) -> int:
