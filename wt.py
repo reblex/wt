@@ -268,10 +268,14 @@ def sub(type: str, time: str):
             if timer.status != Status.Stopped:
                 print("Can only update total time when timer is stopped.")
                 return
+            if timer.completed_minutes < minutes:
+                print("Cannot reduce total minutes to below 0.")
 
             timer.completed_minutes -= minutes
         case "current" | "c":
-            timer.paused_minutes = -minutes
+            if timer.paused_minutes < minutes:
+                print("Cannot reduce current minutes to below 0.")
+            timer.paused_minutes -= minutes
 
             if timer.status == Status.Running:
                 now = dt.now().strftime(DT_FORMAT)
@@ -357,9 +361,9 @@ def print_help():
                             Running wt without any command does the same.
         set <type> <time>   Manually set total/current time using 1-4 digit
                             HHMM, HMM, MM, or M. Ex. wt set total 15 = 15min.
-        add <type> <timer>  Add to current or total time. Same types and time
+        add <type> <time>   Add to current or total time. Same types and time
                             format as Set command.
-        add <type> <timer>  Subtract to current or total time. Same types and
+        sub <type> <time>   Subtract to current or total time. Same types and
                             time format as Set command.
             types:
                 total / t
